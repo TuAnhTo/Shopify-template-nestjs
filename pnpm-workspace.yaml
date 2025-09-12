@@ -1,0 +1,4 @@
+packages:
+ - 'extensions/*'
+ - 'web'
+ - 'web/frontend'
