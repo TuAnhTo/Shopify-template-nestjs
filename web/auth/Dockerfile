@@ -13,6 +13,6 @@ RUN pnpm install
 COPY auth/ .
 
 # Expose port
-EXPOSE 3002
+EXPOSE 3001
 
 CMD ["pnpm", "start:dev"]

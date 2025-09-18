@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: microservice-app
-  labels:
-    name: microservice-app
-    environment: development

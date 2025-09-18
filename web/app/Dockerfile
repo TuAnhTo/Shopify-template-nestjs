@@ -8,11 +8,14 @@ RUN npm install -g pnpm@9 @nestjs/cli
 COPY app/package*.json ./
 COPY app/pnpm-lock.yaml* ./
 
-RUN pnpm install
+RUN pnpm install --prod
 
 COPY app/ .
 
-# Expose port
-EXPOSE 3003
+# Build application
+RUN nest build
 
-CMD ["pnpm", "start:dev"]
+# Expose port
+EXPOSE 3000
+
+CMD ["pnpm", "start:prod"]

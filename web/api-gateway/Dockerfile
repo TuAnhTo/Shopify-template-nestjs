@@ -2,18 +2,21 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm@9 @nestjs/cli
 
 COPY api-gateway/package*.json ./
 COPY api-gateway/pnpm-lock.yaml* ./
 
-RUN pnpm install
+RUN pnpm install --prod
 
 # Copy source
 COPY api-gateway/ .
 
-# Expose port (check lại với main.ts)
-EXPOSE 3001
+# Build application
+RUN nest build
 
-# Run dev mode
-CMD ["pnpm", "start:dev"]
+# Expose port (check lại với main.ts)
+EXPOSE 3003
+
+# Run production mode
+CMD ["pnpm", "start:prod"]

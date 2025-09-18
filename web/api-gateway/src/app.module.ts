@@ -2,7 +2,6 @@ import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-
 import { ProxyController } from './controllers/proxy.controller';
 import { HealthController } from './controllers/health.controller';
 import { ShopifyAuthController } from './controllers/shopify-auth.controller';
