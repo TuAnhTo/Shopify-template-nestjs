@@ -1,4 +1,6 @@
 roles = ["backend"]
 
 [commands]
-dev = "npm run dev"
+dev = "pnpm run dev:all"
+
+build = "pnpm run build:all"

@@ -1,0 +1,54 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: microservice-ingress
+  namespace: microservice-app
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: microservice-app.local
+    http:
+      paths:
+      # Gateway service (main entry point)
+      - path: /(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: gateway-service
+            port:
+              number: 3001
+      # Direct access to Shopify auth (for webhooks)
+      - path: /api/shopify/auth/(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: shopify-service
+            port:
+              number: 3004
+      # Direct access to webhooks
+      - path: /api/webhooks/(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: webhook-service
+            port:
+              number: 3005
+
+---
+# SSL Certificate (self-signed for development)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: microservice-tls
+  namespace: microservice-app
+type: kubernetes.io/tls
+data:
+  # Base64 encoded self-signed certificate (you'll need to generate these)
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t  # Placeholder
+  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t  # Placeholder

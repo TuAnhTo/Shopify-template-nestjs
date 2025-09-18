@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: microservice-app
+  labels:
+    app: auth-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: microservice-app/auth-service:latest
+        imagePullPolicy: Never  # For local development
+        ports:
+        - containerPort: 3002
+          name: http
+        env:
+        - name: PORT
+          value: "3002"
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: NODE_ENV
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_PORT
+        - name: DB_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DB_PASSWORD
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_NAME
+        - name: SHOPIFY_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: SHOPIFY_SERVICE_URL
+        - name: SHOPIFY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: SHOPIFY_API_KEY
+        - name: SHOPIFY_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: SHOPIFY_API_SECRET
+        - name: SHOPIFY_APP_URL
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: SHOPIFY_APP_URL
+        - name: SHOPIFY_SCOPES
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: SHOPIFY_SCOPES
+        - name: SHOPIFY_EMBEDDED
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: SHOPIFY_EMBEDDED
+        livenessProbe:
+          httpGet:
+            path: /api/config/health
+            port: 3002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/config/health
+            port: 3002
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: microservice-app
+  labels:
+    app: auth-service
+spec:
+  ports:
+  - port: 3002
+    targetPort: 3002
+    name: http
+  selector:
+    app: auth-service
+  type: ClusterIP

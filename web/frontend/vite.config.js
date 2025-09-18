@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { dirname } from "path";
+import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import react from "@vitejs/plugin-react";
 
@@ -16,8 +16,10 @@ if (
 
 process.env.VITE_SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
 
+// Force API Gateway port to avoid Shopify CLI conflicts
+const BACKEND_PORT = 3003;
 const proxyOptions = {
-  target: `http://127.0.0.1:${process.env.BACKEND_PORT}`,
+  target: `http://127.0.0.1:${BACKEND_PORT}`,
   changeOrigin: false,
   secure: true,
   ws: false,
@@ -49,6 +51,9 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     preserveSymlinks: true,
+    alias: {
+      "@": resolve(dirname(fileURLToPath(import.meta.url)), "./src"),
+    },
   },
   server: {
     host: "localhost",

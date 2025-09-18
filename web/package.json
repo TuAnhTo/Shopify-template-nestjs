@@ -4,25 +4,32 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "debug": "node --inspect-brk index.js",
-    "dev": "cross-env NODE_ENV=development nodemon index.js --ignore ./frontend",
-    "serve": "cross-env NODE_ENV=production node index.js"
+    "dev": "cd api-gateway && pnpm run start:dev",
+    "start:dev": "cd api-gateway && pnpm run start:dev",
+    "dev:auth": "cd auth && pnpm run start:dev",
+    "dev:app": "cd app && pnpm run start:dev",
+    "dev:webhook": "cd webhook && pnpm run start:dev",
+    "dev:shopify": "cd shopify && pnpm run start:dev",
+    "dev:gateway": "cd api-gateway && pnpm run start:dev",
+    "dev:all": "concurrently --names \"AUTH,APP,WEBHOOK,SHOPIFY,GATEWAY\" -c \"blue,green,yellow,magenta,cyan\" \"pnpm run dev:auth\" \"pnpm run dev:app\" \"pnpm run dev:webhook\" \"pnpm run dev:shopify\" \"pnpm run dev:gateway\"",
+    "build": "pnpm run build:all",
+    "build:all": "pnpm run build:auth && pnpm run build:app && pnpm run build:webhook && pnpm run build:shopify && pnpm run build:gateway",
+    "build:auth": "cd auth && pnpm run build",
+    "build:app": "cd app && pnpm run build",
+    "build:webhook": "cd webhook && pnpm run build",
+    "build:shopify": "cd shopify && pnpm run build",
+    "build:gateway": "cd api-gateway && pnpm run build",
+    "start:prod": "cd api-gateway && pnpm run start:prod",
+    "serve": "pnpm run start:prod"
   },
   "type": "module",
   "engines": {
     "node": ">=16.13.0"
   },
   "dependencies": {
-    "@shopify/shopify-app-express": "^5.0.8",
-    "@shopify/shopify-app-session-storage-sqlite": "^4.0.8",
-    "compression": "^1.7.4",
-    "cross-env": "^7.0.3",
-    "serve-static": "^1.14.1",
-    "sqlite3": "^5.1.7"
+    "concurrently": "^8.0.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.15",
-    "prettier": "^2.6.2",
-    "pretty-quick": "^3.1.3"
+    "prettier": "^2.6.2"
   }
 }

@@ -1,0 +1,216 @@
+{
+  "mcpServers": {
+    "shopify-microservices": {
+      "command": "node",
+      "args": ["./web/backend/src/mcp/shopify-mcp-server.js"],
+      "env": {
+        "NODE_ENV": "production",
+        "GATEWAY_API_URL": "http://localhost:3000",
+        "PRODUCT_API_URL": "http://localhost:3001", 
+        "AUTH_API_URL": "http://localhost:3002",
+        "WEBHOOK_API_URL": "http://localhost:3003"
+      }
+    },
+    "workflow-management": {
+      "command": "node", 
+      "args": ["/Users/tuanhto/AI/claude-gemini-bridge/workflow/mcp-integration/workflow-mcp-server.js"],
+      "env": {
+        "WORKFLOW_API_URL": "http://localhost:4000/api",
+        "NODE_ENV": "production"
+      }
+    }
+  },
+  "tools": {
+    "shopify_product_workflow": {
+      "description": "Automated product management workflow for Shopify microservices",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": ["create", "update", "delete", "sync", "bulk_import"],
+            "description": "Product operation to perform"
+          },
+          "productData": {
+            "type": "object", 
+            "description": "Product data for operations"
+          },
+          "validation_rules": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Validation rules to apply"
+          }
+        },
+        "required": ["operation"]
+      }
+    },
+    "microservice_health_check": {
+      "description": "Comprehensive health monitoring for all microservices",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["api-gateway", "product-service", "auth-service", "webhook-service", "all"]
+            },
+            "description": "Services to monitor"
+          },
+          "include_metrics": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include performance metrics in report"
+          }
+        }
+      }
+    },
+    "webhook_automation": {
+      "description": "Automated webhook processing and routing",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "webhook_type": {
+            "type": "string",
+            "enum": ["orders/create", "orders/updated", "products/create", "products/update", "customers/create"],
+            "description": "Type of Shopify webhook"
+          },
+          "auto_route": {
+            "type": "boolean", 
+            "default": true,
+            "description": "Automatically route to appropriate service"
+          },
+          "payload": {
+            "type": "object",
+            "description": "Webhook payload data"
+          }
+        },
+        "required": ["webhook_type", "payload"]
+      }
+    },
+    "data_synchronization": {
+      "description": "Bidirectional data sync between Shopify and microservices",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sync_type": {
+            "type": "string",
+            "enum": ["products", "orders", "customers", "inventory", "full"],
+            "description": "Type of data to synchronize"
+          },
+          "direction": {
+            "type": "string", 
+            "enum": ["shopify_to_service", "service_to_shopify", "bidirectional"],
+            "description": "Sync direction"
+          },
+          "conflict_resolution": {
+            "type": "string",
+            "enum": ["shopify_wins", "service_wins", "manual_review"],
+            "default": "shopify_wins"
+          }
+        },
+        "required": ["sync_type", "direction"]
+      }
+    },
+    "cqrs_orchestration": {
+      "description": "Execute CQRS commands and queries across microservices",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string",
+            "enum": ["product-service", "auth-service"],
+            "description": "Target microservice"
+          },
+          "operation_type": {
+            "type": "string",
+            "enum": ["command", "query"],
+            "description": "Type of CQRS operation"
+          },
+          "operation_name": {
+            "type": "string",
+            "description": "Specific command or query name"
+          },
+          "payload": {
+            "type": "object",
+            "description": "Operation payload"
+          }
+        },
+        "required": ["service", "operation_type", "operation_name"]
+      }
+    }
+  },
+  "workflows": {
+    "full_product_lifecycle": {
+      "description": "Complete product lifecycle management from creation to deletion",
+      "steps": [
+        "shopify_product_workflow",
+        "data_synchronization",
+        "microservice_health_check"
+      ],
+      "parallel": false,
+      "retry_policy": {
+        "max_attempts": 3,
+        "delay_seconds": 30
+      }
+    },
+    "order_fulfillment_automation": {
+      "description": "Automated order processing from webhook to fulfillment",
+      "steps": [
+        "webhook_automation",
+        "cqrs_orchestration",
+        "data_synchronization"
+      ],
+      "parallel": true,
+      "timeout_minutes": 10
+    },
+    "system_health_monitoring": {
+      "description": "Continuous monitoring and alerting for all microservices",
+      "steps": [
+        "microservice_health_check"
+      ],
+      "schedule": "*/5 * * * *",
+      "alert_on_failure": true
+    },
+    "daily_data_sync": {
+      "description": "Daily synchronization of all data between Shopify and services",
+      "steps": [
+        "data_synchronization"
+      ],
+      "schedule": "0 2 * * *",
+      "parallel": false,
+      "cleanup_after": true
+    }
+  },
+  "configuration": {
+    "microservice_architecture": "nestjs_cqrs",
+    "shopify_integration": {
+      "api_version": "2023-10",
+      "webhook_verification": true,
+      "rate_limiting": {
+        "enabled": true,
+        "requests_per_minute": 40
+      }
+    },
+    "monitoring": {
+      "health_check_interval": 300,
+      "performance_metrics": true,
+      "error_tracking": true,
+      "dashboard_url": "http://localhost:3000/dashboard"
+    },
+    "data_sync": {
+      "batch_size": 100,
+      "retry_attempts": 3,
+      "conflict_resolution": "shopify_wins",
+      "backup_before_sync": true
+    },
+    "workflow_engine": {
+      "max_concurrent_workflows": 10,
+      "timeout_default_minutes": 15,
+      "retry_policy": {
+        "default_attempts": 3,
+        "exponential_backoff": true
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+packages:
+  - "auth"
+  - "app"
+  - "webhook"
+  - "shopify"
+  - "api-gateway"
+  - "shared"

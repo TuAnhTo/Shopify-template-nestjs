@@ -1,0 +1,44 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: microservice-app
+
+resources:
+  # Base resources
+  - namespace.yaml
+  - configmap.yaml
+  
+  # Database
+  - ../manifests/database/postgres-init-configmap.yaml
+  - ../manifests/database/postgres-pv.yaml
+  - ../manifests/database/postgres-statefulset.yaml
+  - ../manifests/database/redis-deployment.yaml
+  
+  # Services
+  - ../manifests/services/shopify-service.yaml
+  - ../manifests/services/auth-service.yaml
+  - ../manifests/services/app-service.yaml
+  - ../manifests/services/gateway-service.yaml
+  - ../manifests/services/webhook-service.yaml
+  - ../manifests/services/frontend-service.yaml
+  
+  # Ingress
+  - ../manifests/ingress/nginx-ingress.yaml
+
+images:
+  - name: microservice-app/shopify-service
+    newTag: latest
+  - name: microservice-app/auth-service
+    newTag: latest
+  - name: microservice-app/app-service
+    newTag: latest
+  - name: microservice-app/gateway-service
+    newTag: latest
+  - name: microservice-app/webhook-service
+    newTag: latest
+  - name: microservice-app/frontend
+    newTag: latest
+
+commonLabels:
+  app.kubernetes.io/name: microservice-app
+  app.kubernetes.io/version: "1.0.0"

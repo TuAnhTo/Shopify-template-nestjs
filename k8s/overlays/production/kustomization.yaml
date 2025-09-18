@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: microservice-app
+
+bases:
+  - ../../base
+
+patchesStrategicMerge:
+  - production-config.yaml
+
+images:
+  - name: microservice-app/shopify-service
+    newTag: latest
+  - name: microservice-app/auth-service
+    newTag: latest
+  - name: microservice-app/app-service
+    newTag: latest
+  - name: microservice-app/gateway-service
+    newTag: latest
+  - name: microservice-app/webhook-service
+    newTag: latest
+  - name: microservice-app/frontend
+    newTag: latest
+
+replicas:
+  - name: postgres
+    count: 3
+  - name: redis
+    count: 2
+  - name: shopify-service
+    count: 3
+  - name: auth-service
+    count: 3
+  - name: app-service
+    count: 3
+  - name: gateway-service
+    count: 2
+  - name: webhook-service
+    count: 2
+  - name: frontend
+    count: 2

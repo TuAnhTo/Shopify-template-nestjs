@@ -1,0 +1,1 @@
+export { ExitIframePage } from "./ExitIframePage";

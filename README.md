@@ -1,242 +1,653 @@
-# Shopify App Template for Node
+# Shopify Microservice Application
 
-This is a template for building a [Shopify app](https://shopify.dev/docs/apps/getting-started) using Node and React. It contains the basics for building a Shopify app.
+A production-ready Shopify app built with microservices architecture, featuring session token authentication, server-side rendering, and Kubernetes deployment.
 
-Rather than cloning this repo, you can use your preferred package manager and the Shopify CLI with [these steps](#installing-the-template).
+## 🏗️ Architecture Overview
 
-## Benefits
+### 🔐 **Authentication Flow**
 
-Shopify apps are built on a variety of Shopify tools to create a great merchant experience. The [create an app](https://shopify.dev/docs/apps/getting-started/create) tutorial in our developer documentation will guide you through creating a Shopify app using this template.
+This application implements modern Shopify authentication with JWT session tokens and automatic token exchange:
 
-The Node app template comes with the following out-of-the-box functionality:
+1. **Shopify sends JWT session token** to gateway
+2. **Gateway validates JWT signature** using SHOPIFY_API_SECRET
+3. **Gateway checks for existing session** in database
+4. **If no session exists**: Gateway performs **token exchange** with Shopify OAuth
+5. **Session stored in database** with persistent access token
+6. **Gateway forwards request** to App Service for static file serving
 
-- OAuth: Installing the app and granting permissions
-- GraphQL Admin API: Querying or mutating Shopify admin data
-- REST Admin API: Resource classes to interact with the API
-- Shopify-specific tooling:
-  - AppBridge
-  - Polaris
-  - Webhooks
-
-## Tech Stack
-
-This template combines a number of third party open-source tools:
-
-- [Express](https://expressjs.com/) builds the backend.
-- [Vite](https://vitejs.dev/) builds the [React](https://reactjs.org/) frontend.
-- [React Router](https://reactrouter.com/) is used for routing. We wrap this with file-based routing.
-- [React Query](https://react-query.tanstack.com/) queries the Admin API.
-- [`i18next`](https://www.i18next.com/) and related libraries are used to internationalize the frontend.
-  - [`react-i18next`](https://react.i18next.com/) is used for React-specific i18n functionality.
-  - [`i18next-resources-to-backend`](https://github.com/i18next/i18next-resources-to-backend) is used to dynamically load app translations.
-  - [`@formatjs/intl-localematcher`](https://formatjs.io/docs/polyfills/intl-localematcher/) is used to match the user locale with supported app locales.
-  - [`@formatjs/intl-locale`](https://formatjs.io/docs/polyfills/intl-locale) is used as a polyfill for [`Intl.Locale`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale) if necessary.
-  - [`@formatjs/intl-pluralrules`](https://formatjs.io/docs/polyfills/intl-pluralrules) is used as a polyfill for [`Intl.PluralRules`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/PluralRules) if necessary.
-
-The following Shopify tools complement these third-party tools to ease app development:
-
-- [Shopify API library](https://github.com/Shopify/shopify-node-api) adds OAuth to the Express backend. This lets users install the app and grant scope permissions.
-- [App Bridge React](https://shopify.dev/docs/apps/tools/app-bridge/getting-started/using-react) adds [authentication to API requests](https://shopify.dev/docs/api/app-bridge-library/apis/resource-fetching) in the frontend and renders components outside of the App’s iFrame.
-- [Polaris React](https://polaris.shopify.com/) is a powerful design system and component library that helps developers build high quality, consistent experiences for Shopify merchants.
-- [File-based routing](https://github.com/Shopify/shopify-frontend-template-react/blob/main/Routes.jsx) makes creating new pages easier.
-- [`@shopify/i18next-shopify`](https://github.com/Shopify/i18next-shopify) is a plugin for [`i18next`](https://www.i18next.com/) that allows translation files to follow the same JSON schema used by Shopify [app extensions](https://shopify.dev/docs/apps/checkout/best-practices/localizing-ui-extensions#how-it-works) and [themes](https://shopify.dev/docs/themes/architecture/locales/storefront-locale-files#usage).
-
-## Getting started
-
-### Requirements
-
-1. You must [download and install Node.js](https://nodejs.org/en/download/) if you don't already have it.
-1. You must [create a Shopify partner account](https://partners.shopify.com/signup) if you don’t have one.
-1. You must create a store for testing if you don't have one, either a [development store](https://help.shopify.com/en/partners/dashboard/development-stores#create-a-development-store) or a [Shopify Plus sandbox store](https://help.shopify.com/en/partners/dashboard/managing-stores/plus-sandbox-store).
-
-### Installing the template
-
-This template can be installed using your preferred package manager:
-
-Using yarn:
-
-```shell
-yarn create @shopify/app --template=node
+```
+┌─────────────┐    JWT Token    ┌─────────────┐    Session Check    ┌─────────────┐
+│   Shopify   │──────────────► │   Gateway   │───────────────────► │Auth Service │
+│   Admin     │                │Port: 3003   │                     │Port: 3001   │
+└─────────────┘                └─────────────┘                     └─────────────┘
+                                       │                                    │
+                                       │ No Session? │                     │
+                                       ▼ Token Exchange                     ▼
+                               ┌─────────────┐                     ┌─────────────┐
+                               │OAuth API    │◄────────────────────│PostgreSQL   │
+                               │Exchange     │  Store Session      │Sessions DB  │
+                               └─────────────┘                     └─────────────┘
 ```
 
-Using npm:
-
-```shell
-npm init @shopify/app@latest -- --template=node
+### Development Mode
+```
+┌─────────────────┐    ┌─────────────────┐
+│   Shopify CLI   │────│   Frontend      │
+│   Fixed Tunnel  │    │   React/Vite    │ ← Session tokens
+│   Port: 3000    │    │   Port: 5173    │
+└─────────────────┘    └─────────────────┘
+          │                        │
+          │     Shopify requests   │
+          │     with JWT tokens    │
+          ▼                        ▼
+    ┌─────────────────────────────────────┐
+    │        API Gateway                  │ ← JWT validation
+    │        Port: 3003                   │   → Token exchange
+    │        (K8s with port-forward)      │   → Route to services
+    └─────────────────────────────────────┘
+                     │
+        ┌────────────┼────────────┐
+        ▼            ▼            ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│Auth Service │ │App Service  │ │PostgreSQL   │
+│Port: 3001   │ │Port: 3000   │ │Port: 5432   │
+│Session Mgmt │ │Static Files │ │Sessions DB  │
+└─────────────┘ └─────────────┘ └─────────────┘
 ```
 
-Using pnpm:
-
-```shell
-pnpm create @shopify/app@latest --template=node
+### Production Mode
+```
+┌─────────────────┐    ┌─────────────────┐
+│    Ingress      │────│   API Gateway   │
+│    nginx        │    │   Port: 3003    │
+└─────────────────┘    └─────────────────┘
+                                │
+                    ┌───────────┼───────────┐
+                    ▼           ▼           ▼
+            ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+            │Auth Service │ │App Service  │ │PostgreSQL   │
+            │Port: 3001   │ │Port: 3000   │ │Port: 5432   │
+            │JWT + OAuth  │ │Static Files │ │Sessions DB  │
+            └─────────────┘ └─────────────┘ └─────────────┘
 ```
 
-This will clone the template and install the required dependencies.
+## 📋 Prerequisites
 
-#### Local Development
+- **Docker Desktop** with Kubernetes enabled
+- **kubectl** configured to access your cluster
+- **Node.js** 18+ and **pnpm**
+- **Shopify CLI** 3.80+
+- **ngrok account** (for fixed tunnel development)
+- **Shopify Partner Account** and test store
 
-[The Shopify CLI](https://shopify.dev/docs/apps/tools/cli) connects to an app in your Partners dashboard. It provides environment variables, runs commands in parallel, and updates application URLs for easier development.
+## 🚀 Quick Start Guide
 
-You can develop locally using your preferred package manager. Run one of the following commands from the root of your app.
+### 1. Environment Setup
 
-Using yarn:
+#### Clone and Install Dependencies
+```bash
+# Clone the repository
+git clone <repository-url>
+cd microservice-app
 
-```shell
-yarn dev
+# Install root dependencies
+pnpm install
+
+# Install service dependencies
+cd web && pnpm install
+cd auth && pnpm install
+cd app && pnpm install
+cd shopify && pnpm install
+cd webhook && pnpm install
+cd api-gateway && pnpm install
+cd frontend && pnpm install
+cd ..
 ```
 
-Using npm:
+#### Configure Environment Variables
+```bash
+# Copy environment template
+cp .env.example .env
 
-```shell
-npm run dev
+# Edit with your Shopify app credentials
+nano .env
 ```
 
-Using pnpm:
-
-```shell
-pnpm run dev
+Required environment variables:
+```env
+SHOPIFY_API_KEY=your_api_key
+SHOPIFY_API_SECRET=your_api_secret
+SHOPIFY_SCOPES=read_products,write_products
+DB_PASSWORD=postgres_password
+SHOPIFY_WEBHOOK_SECRET=webhook_secret
 ```
 
-Open the URL generated in your console. Once you grant permission to the app, you can start development.
+### 2. Development Workflow
 
-## Deployment
+#### Option A: Full Local Development (Recommended for Frontend Changes)
+```bash
+# Start all services locally
+pnpm run dev:all
 
-### Application Storage
-
-This template uses [SQLite](https://www.sqlite.org/index.html) to store session data. The database is a file called `database.sqlite` which is automatically created in the root. This use of SQLite works in production if your app runs as a single instance.
-
-The database that works best for you depends on the data your app needs and how it is queried. You can run your database of choice on a server yourself or host it with a SaaS company. Here’s a short list of databases providers that provide a free tier to get started:
-
-| Database   | Type             | Hosters                                                                                                                                                                                                                               |
-| ---------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| MySQL      | SQL              | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-mysql), [Planet Scale](https://planetscale.com/), [Amazon Aurora](https://aws.amazon.com/rds/aurora/), [Google Cloud SQL](https://cloud.google.com/sql/docs/mysql) |
-| PostgreSQL | SQL              | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-postgresql), [Amazon Aurora](https://aws.amazon.com/rds/aurora/), [Google Cloud SQL](https://cloud.google.com/sql/docs/postgres)                                   |
-| Redis      | Key-value        | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-redis), [Amazon MemoryDB](https://aws.amazon.com/memorydb/)                                                                                                        |
-| MongoDB    | NoSQL / Document | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-mongodb), [MongoDB Atlas](https://www.mongodb.com/atlas/database)                                                                                                  |
-
-To use one of these, you need to change your session storage configuration. To help, here’s a list of [SessionStorage adapter packages](https://github.com/Shopify/shopify-api-js/blob/main/packages/shopify-api/docs/guides/session-storage.md).
-
-### Build
-
-The frontend is a single page app. It requires the `SHOPIFY_API_KEY`, which you can find on the page for your app in your partners dashboard. Paste your app’s key in the command for the package manager of your choice:
-
-Using yarn:
-
-```shell
-cd web/frontend/ && SHOPIFY_API_KEY=REPLACE_ME yarn build
+# In another terminal, start Shopify CLI
+shopify app dev
 ```
 
-Using npm:
+#### Option B: Hybrid Development (K8s Backend + Shopify CLI Frontend) ⭐ **Recommended**
 
-```shell
-cd web/frontend/ && SHOPIFY_API_KEY=REPLACE_ME npm run build
+**Step 1: Prepare Development Configuration**
+```bash
+# Get your project root path
+PROJECT_ROOT=$(pwd)
+echo "Project root: $PROJECT_ROOT"
+
+# Update development configuration with your project path
+sed -i.bak "s|PROJECT_ROOT_PLACEHOLDER|$PROJECT_ROOT|g" k8s/overlays/development/development-config.yaml
+
+# Verify the paths were updated correctly
+grep -n "$PROJECT_ROOT" k8s/overlays/development/development-config.yaml
 ```
 
-Using pnpm:
-
-```shell
-cd web/frontend/ && SHOPIFY_API_KEY=REPLACE_ME pnpm run build
+**Step 2: Build Development Images**
+```bash
+# Build all service images for development
+docker build -t microservice-app/auth-service:dev-latest -f web/auth/Dockerfile web/
+docker build -t microservice-app/app-service:dev-latest -f web/app/Dockerfile web/
+docker build -t microservice-app/shopify-service:dev-latest -f web/shopify/Dockerfile web/
+docker build -t microservice-app/webhook-service:dev-latest -f web/webhook/Dockerfile web/
+docker build -t microservice-app/gateway-service:dev-latest -f web/api-gateway/Dockerfile web/
 ```
 
-You do not need to build the backend.
+**Step 3: Deploy to Kubernetes**
+```bash
+# Create namespace
+kubectl create namespace microservice-app
 
-## Hosting
+# Apply development configuration with hot reload
+kubectl apply -k k8s/overlays/development
 
-When you're ready to set up your app in production, you can follow [our deployment documentation](https://shopify.dev/docs/apps/deployment/web) to host your app on a cloud provider like [Heroku](https://www.heroku.com/) or [Fly.io](https://fly.io/).
+# Wait for all services to be ready
+kubectl wait --for=condition=available --timeout=300s deployment -l app.kubernetes.io/name=microservice-app -n microservice-app
 
-When you reach the step for [setting up environment variables](https://shopify.dev/docs/apps/deployment/web#set-env-vars), you also need to set the variable `NODE_ENV=production`.
-
-## Known issues
-
-### Hot module replacement and Firefox
-
-When running the app with the CLI in development mode on Firefox, you might see your app constantly reloading when you access it.
-That happened in previous versions of the CLI, because of the way HMR websocket requests work.
-
-We fixed this issue with v3.4.0 of the CLI, so after updating it, you can make the following changes to your app's `web/frontend/vite.config.js` file:
-
-1. Change the definition `hmrConfig` object to be:
-
-   ```js
-   const host = process.env.HOST
-     ? process.env.HOST.replace(/https?:\/\//, "")
-     : "localhost";
-
-   let hmrConfig;
-   if (host === "localhost") {
-     hmrConfig = {
-       protocol: "ws",
-       host: "localhost",
-       port: 64999,
-       clientPort: 64999,
-     };
-   } else {
-     hmrConfig = {
-       protocol: "wss",
-       host: host,
-       port: process.env.FRONTEND_PORT,
-       clientPort: 443,
-     };
-   }
-   ```
-
-1. Change the `server.host` setting in the configs to `"localhost"`:
-
-   ```js
-   server: {
-     host: "localhost",
-     ...
-   ```
-
-### I can't get past the ngrok "Visit site" page
-
-When you’re previewing your app or extension, you might see an ngrok interstitial page with a warning:
-
-```text
-You are about to visit <id>.ngrok.io: Visit Site
+# Check deployment status
+kubectl get pods -n microservice-app
 ```
 
-If you click the `Visit Site` button, but continue to see this page, then you should run dev using an alternate tunnel URL that you run using tunneling software.
-We've validated that [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/run-tunnel/trycloudflare/) works with this template.
+**Step 4: Setup Port Forwarding**
+```bash
+# Port forward all backend services
+kubectl port-forward svc/gateway-service 3001:3001 -n microservice-app &
+kubectl port-forward svc/auth-service 3002:3002 -n microservice-app &
+kubectl port-forward svc/app-service 3003:3003 -n microservice-app &
+kubectl port-forward svc/shopify-service 3004:3004 -n microservice-app &
+kubectl port-forward svc/webhook-service 3005:3005 -n microservice-app &
+kubectl port-forward svc/postgres-service 5432:5432 -n microservice-app &
 
-To do that, you can [install the `cloudflared` CLI tool](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/), and run:
-
-```shell
-# Note that you can also use a different port
-cloudflared tunnel --url http://localhost:3000
+# Verify port forwarding is active
+lsof -i :3001,3002,3003,3004,3005,5432 | grep kubectl
 ```
 
-Out of the logs produced by cloudflare you will notice a https URL where the domain ends with `trycloudflare.com`. This is your tunnel URL. You need to copy this URL as you will need it in the next step.
+**Step 5: Setup Fixed Tunnel (Optional)**
+```bash
+# Install ngrok
+brew install ngrok
 
-```shell
-2022-11-11T19:57:55Z INF Requesting new quick Tunnel on trycloudflare.com...
-2022-11-11T19:57:58Z INF +--------------------------------------------------------------------------------------------+
-2022-11-11T19:57:58Z INF |  Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):  |
-2022-11-11T19:57:58Z INF |  https://randomly-generated-hostname.trycloudflare.com                                     |
-2022-11-11T19:57:58Z INF +--------------------------------------------------------------------------------------------+
+# Authenticate ngrok
+ngrok config add-authtoken <your-token>
+
+# Start fixed tunnel
+ngrok http 3000 --subdomain=your-app-name
 ```
 
-Below you would replace `randomly-generated-hostname` with what you have copied from the terminal. In a different terminal window, navigate to your app's root and with the URL from above you would call:
+**Step 6: Start Shopify CLI**
+```bash
+# With fixed tunnel
+shopify app dev --tunnel-url=https://your-app-name.ngrok.io
 
-```shell
-# Using yarn
-yarn dev --tunnel-url https://randomly-generated-hostname.trycloudflare.com:3000
-# or using npm
-npm run dev --tunnel-url https://randomly-generated-hostname.trycloudflare.com:3000
-# or using pnpm
-pnpm dev --tunnel-url https://randomly-generated-hostname.trycloudflare.com:3000
+# Or without tunnel (random URL each time)
+shopify app dev
 ```
 
-## Developer resources
+### 3. Building Docker Images
 
-- [Introduction to Shopify apps](https://shopify.dev/docs/apps/getting-started)
-- [App authentication](https://shopify.dev/docs/apps/auth)
-- [Shopify CLI](https://shopify.dev/docs/apps/tools/cli)
-- [Shopify API Library documentation](https://github.com/Shopify/shopify-api-js#readme)
-- [Getting started with internationalizing your app](https://shopify.dev/docs/apps/best-practices/internationalization/getting-started)
-  - [i18next](https://www.i18next.com/)
-    - [Configuration options](https://www.i18next.com/overview/configuration-options)
-  - [react-i18next](https://react.i18next.com/)
-    - [`useTranslation` hook](https://react.i18next.com/latest/usetranslation-hook)
-    - [`Trans` component usage with components array](https://react.i18next.com/latest/trans-component#alternative-usage-components-array)
-  - [i18n-ally VS Code extension](https://marketplace.visualstudio.com/items?itemName=Lokalise.i18n-ally)
+#### Build All Services
+```bash
+# Build auth service
+docker build -t microservice-app/auth-service:latest -f web/auth/Dockerfile web/
+
+# Build app service
+docker build -t microservice-app/app-service:latest -f web/app/Dockerfile web/
+
+# Build shopify service
+docker build -t microservice-app/shopify-service:latest -f web/shopify/Dockerfile web/
+
+# Build webhook service
+docker build -t microservice-app/webhook-service:latest -f web/webhook/Dockerfile web/
+
+# Build api gateway
+docker build -t microservice-app/gateway-service:latest -f web/api-gateway/Dockerfile web/
+
+# Build frontend (for production)
+docker build -t microservice-app/frontend:latest -f web/frontend/Dockerfile web/
+```
+
+#### Build Development Images
+```bash
+# Build with dev tags
+docker build -t microservice-app/auth-service:dev-latest -f web/auth/Dockerfile web/
+docker build -t microservice-app/app-service:dev-latest -f web/app/Dockerfile web/
+docker build -t microservice-app/shopify-service:dev-latest -f web/shopify/Dockerfile web/
+docker build -t microservice-app/webhook-service:dev-latest -f web/webhook/Dockerfile web/
+docker build -t microservice-app/gateway-service:dev-latest -f web/api-gateway/Dockerfile web/
+```
+
+## 🔧 Development Setup for Teams
+
+This project uses `PROJECT_ROOT_PLACEHOLDER` in the Kubernetes configuration to make it easy for team members to work on different machines. Each developer needs to update the paths once for their local environment.
+
+### Team Member Onboarding
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd microservice-app
+
+# Install dependencies (run this once)
+pnpm install
+cd web && pnpm install
+
+# Update paths for your local environment
+sed -i.bak "s|PROJECT_ROOT_PLACEHOLDER|$(pwd)|g" k8s/overlays/development/development-config.yaml
+
+# Follow the development workflow steps above
+```
+
+## 🛠️ Kubernetes Deployment
+
+### Development Deployment
+```bash
+# Apply development configuration
+kubectl apply -k k8s/overlays/development
+
+# Check deployment status
+kubectl get pods -n microservice-app
+kubectl get services -n microservice-app
+
+# View logs
+kubectl logs -f deployment/shopify-service -n microservice-app
+kubectl logs -f deployment/auth-service -n microservice-app
+kubectl logs -f deployment/app-service -n microservice-app
+```
+
+### Production Deployment
+```bash
+# Apply production configuration
+kubectl apply -k k8s/overlays/production
+
+# Wait for all services
+kubectl wait --for=condition=available --timeout=600s deployment -l app.kubernetes.io/name=microservice-app -n microservice-app
+
+# Check status
+kubectl get pods -n microservice-app
+kubectl get ingress -n microservice-app
+```
+
+## 🔧 Configuration Management
+
+### Update ConfigMap
+```bash
+# Edit configuration
+kubectl edit configmap app-config -n microservice-app
+
+# Or apply changes
+kubectl apply -f k8s/base/configmap.yaml
+```
+
+### Update Secrets
+```bash
+# Update Shopify credentials
+kubectl create secret generic app-secrets \
+  --from-literal=DB_PASSWORD=your_password \
+  --from-literal=SHOPIFY_API_KEY=your_api_key \
+  --from-literal=SHOPIFY_API_SECRET=your_api_secret \
+  --from-literal=SHOPIFY_APP_URL=https://your-domain.com \
+  --from-literal=SHOPIFY_WEBHOOK_SECRET=webhook_secret \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+### Environment Synchronization
+```bash
+# Load environment variables to K8s
+source .env
+
+# Update ConfigMap with environment variables
+kubectl patch configmap app-config -n microservice-app --patch="
+data:
+  SHOPIFY_SCOPES: \"$SHOPIFY_SCOPES\"
+  SHOPIFY_EMBEDDED: \"true\"
+  NODE_ENV: \"development\"
+"
+
+# Update secrets
+kubectl patch secret app-secrets -n microservice-app --patch="
+data:
+  SHOPIFY_API_KEY: $(echo -n $SHOPIFY_API_KEY | base64)
+  SHOPIFY_API_SECRET: $(echo -n $SHOPIFY_API_SECRET | base64)
+"
+```
+
+## 📊 Monitoring & Debugging
+
+### Check Service Health
+```bash
+# Get all resources
+kubectl get all -n microservice-app
+
+# Check pod details
+kubectl describe pod <pod-name> -n microservice-app
+
+# Check service endpoints
+kubectl get endpoints -n microservice-app
+
+# Check resource usage
+kubectl top pods -n microservice-app
+```
+
+### View Logs
+```bash
+# Stream logs from all services
+kubectl logs -f deployment/auth-service -n microservice-app
+kubectl logs -f deployment/app-service -n microservice-app
+kubectl logs -f deployment/shopify-service -n microservice-app
+kubectl logs -f deployment/webhook-service -n microservice-app
+kubectl logs -f deployment/gateway-service -n microservice-app
+
+# View database logs
+kubectl logs -f statefulset/postgres -n microservice-app
+```
+
+### Database Access
+```bash
+# Port forward to PostgreSQL
+kubectl port-forward svc/postgres-service 5432:5432 -n microservice-app
+
+# Connect with psql (in another terminal)
+psql -h localhost -p 5432 -U postgres -d microservice_app
+
+# View tables
+\dt
+
+# Query data
+SELECT * FROM shops;
+```
+
+### Service Testing
+```bash
+# Test API Gateway (main entry point)
+curl http://localhost:3003/health
+
+# Test Auth Service (session management)
+curl http://localhost:3001/api/auth/health
+
+# Test App Service (static files)
+curl http://localhost:3000/health
+
+# Test Shopify Service (optional)
+curl http://localhost:3004/health
+
+# Test Webhook Service (optional)
+curl http://localhost:3005/health
+
+# Test authentication flow (with real Shopify shop)
+curl "http://localhost:3003/?shop=your-shop.myshopify.com&embedded=1"
+```
+
+## 🌐 Service URLs
+
+### Development Mode
+- **Frontend (Shopify CLI)**: http://localhost:3000 or https://your-app.ngrok.io
+- **API Gateway**: http://localhost:3003 (JWT validation & routing)
+- **Auth Service**: http://localhost:3001 (Session management & token exchange)
+- **App Service**: http://localhost:3000 (Static file serving with API key injection)
+- **Shopify Service**: http://localhost:3004 (Optional - API operations)
+- **Webhook Service**: http://localhost:3005 (Optional - Webhook processing)
+- **PostgreSQL**: localhost:5432 (Session storage)
+
+### Production Mode
+- **Application**: https://your-domain.com
+- **Services**: Internal cluster communication only
+
+## 🗄️ Database Management
+
+### Initialize Multiple Databases
+```bash
+# The init script creates these databases:
+# - microservice_app (main)
+# - auth_service
+# - app_service  
+# - webhook_service
+# - shopify_service
+
+# Access specific database
+psql -h localhost -p 5432 -U postgres -d auth_service
+```
+
+### Database Migrations
+```bash
+# Run migrations for each service
+cd web/auth && pnpm run migration:run
+cd web/app && pnpm run migration:run
+cd web/shopify && pnpm run migration:run
+cd web/webhook && pnpm run migration:run
+```
+
+### Backup and Restore
+```bash
+# Backup
+kubectl exec -it statefulset/postgres -n microservice-app -- pg_dump -U postgres microservice_app > backup.sql
+
+# Restore
+kubectl exec -i statefulset/postgres -n microservice-app -- psql -U postgres microservice_app < backup.sql
+```
+
+## 🔄 Scaling
+
+### Manual Scaling
+```bash
+# Scale specific service
+kubectl scale deployment shopify-service --replicas=3 -n microservice-app
+
+# Scale all services
+kubectl scale deployment --all --replicas=2 -n microservice-app
+```
+
+### Auto-scaling
+```bash
+# Enable HPA for a service
+kubectl autoscale deployment shopify-service --cpu-percent=70 --min=2 --max=10 -n microservice-app
+
+# Check HPA status
+kubectl get hpa -n microservice-app
+```
+
+## 🧹 Cleanup
+
+### Development Cleanup
+```bash
+# Stop port forwarding
+pkill -f "kubectl port-forward"
+
+# Delete development resources
+kubectl delete -k k8s/overlays/development
+
+# Delete namespace (removes everything)
+kubectl delete namespace microservice-app
+
+# Clean Docker images
+docker system prune -f
+```
+
+### Production Cleanup
+```bash
+# Delete production resources
+kubectl delete -k k8s/overlays/production
+
+# Delete namespace (removes everything)
+kubectl delete namespace microservice-app
+```
+
+### Complete Reset
+```bash
+# Stop all local processes
+pkill -f "kubectl port-forward"
+pkill -f "shopify app dev"
+pkill -f "pnpm"
+
+# Delete all K8s resources
+kubectl delete namespace microservice-app
+
+# Clean Docker
+docker system prune -a -f
+
+# Reinstall dependencies
+rm -rf node_modules web/*/node_modules
+pnpm install
+```
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+#### 1. Pods Not Starting
+```bash
+# Check pod status
+kubectl get pods -n microservice-app
+
+# Describe problematic pod
+kubectl describe pod <pod-name> -n microservice-app
+
+# Check events
+kubectl get events -n microservice-app --sort-by=.metadata.creationTimestamp
+```
+
+#### 2. Database Connection Issues
+```bash
+# Check PostgreSQL pod
+kubectl get pods -l app=postgres -n microservice-app
+
+# Check service
+kubectl get svc postgres-service -n microservice-app
+
+# Test connection
+kubectl exec -it deployment/auth-service -n microservice-app -- nc -zv postgres-service 5432
+```
+
+#### 3. Image Pull Errors
+```bash
+# Check image names in deployment
+kubectl get deployment shopify-service -o yaml -n microservice-app
+
+# Verify images exist
+docker images | grep microservice-app
+
+# Rebuild if necessary
+docker build -t microservice-app/shopify-service:latest -f web/shopify/Dockerfile web/
+```
+
+#### 4. Service Discovery Issues
+```bash
+# Check service endpoints
+kubectl get endpoints -n microservice-app
+
+# Test service connectivity
+kubectl exec -it deployment/gateway-service -n microservice-app -- curl http://auth-service:3002/health
+```
+
+#### 5. Shopify CLI Issues
+```bash
+# Check tunnel status
+curl https://your-app.ngrok.io
+
+# Verify environment variables
+cat .env
+
+# Check app configuration
+cat shopify.app.toml
+```
+
+### Log Analysis
+```bash
+# Search for errors in logs
+kubectl logs deployment/shopify-service -n microservice-app | grep -i error
+
+# Get recent logs
+kubectl logs --tail=100 deployment/auth-service -n microservice-app
+
+# Follow logs with timestamp
+kubectl logs -f --timestamps deployment/app-service -n microservice-app
+```
+
+## 📚 Additional Resources
+
+### Directory Structure
+```
+microservice-app/
+├── k8s/                          # Kubernetes configurations
+│   ├── base/                     # Base resources
+│   ├── overlays/                 # Environment-specific configs
+│   └── manifests/                # Service manifests
+├── web/                          # Application services
+│   ├── auth/                     # Authentication service
+│   ├── app/                      # Main application service
+│   ├── shopify/                  # Shopify integration service
+│   ├── webhook/                  # Webhook handling service
+│   ├── api-gateway/              # API Gateway service
+│   └── frontend/                 # React frontend
+├── scripts/                      # Utility scripts
+└── docs/                        # Documentation
+```
+
+### Service Responsibilities
+
+- **API Gateway** (Port 3003): 
+  - Main entry point for all Shopify requests
+  - JWT session token validation and signature verification
+  - Automatic token exchange for new sessions  
+  - Smart routing to appropriate backend services
+  - Embedded app authentication flow handling
+
+- **Auth Service** (Port 3001):
+  - Shopify OAuth 2.0 token exchange implementation
+  - Persistent session storage and management
+  - Database session CRUD operations
+  - JWT token validation and decoding
+  - Session lifecycle management
+
+- **App Service** (Port 3000):
+  - Static file serving with SHOPIFY_API_KEY injection
+  - Server-side rendering for production
+  - React app serving with environment variable replacement
+  - Frontend asset delivery
+
+- **PostgreSQL** (Port 5432):
+  - Session storage with ShopifySession entity
+  - User authentication data persistence
+  - Transaction support for atomic session updates
+
+- **Optional Services**:
+  - **Shopify Service**: Shopify API integration, product management
+  - **Webhook Service**: Shopify webhook processing
+  - **Frontend**: React SPA for development (production uses SSR)
+
+### Environment Variables Reference
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `SHOPIFY_API_KEY` | Shopify app API key | `abc123...` |
+| `SHOPIFY_API_SECRET` | Shopify app secret | `def456...` |
+| `SHOPIFY_SCOPES` | Required permissions | `read_products,write_orders` |
+| `DB_PASSWORD` | PostgreSQL password | `secretpassword` |
+| `SHOPIFY_WEBHOOK_SECRET` | Webhook verification | `webhook_secret` |
+| `NODE_ENV` | Environment mode | `development/production` |
+
+For more detailed information, refer to the `/docs` directory or visit [Shopify Developer Documentation](https://shopify.dev/).

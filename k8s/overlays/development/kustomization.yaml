@@ -1,0 +1,55 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: microservice-app
+
+resources:
+  # Base resources
+  - ../../base/namespace.yaml
+  - ../../base/configmap.yaml
+  
+  # Database
+  - ../../manifests/database/postgres-init-configmap.yaml
+  - ../../manifests/database/postgres-pv.yaml
+  - ../../manifests/database/postgres-statefulset.yaml
+  - ../../manifests/database/redis-deployment.yaml
+  
+  # Backend Services Only (Frontend runs via Shopify CLI)
+  - ../../manifests/services/shopify-service.yaml
+  - ../../manifests/services/auth-service.yaml
+  - ../../manifests/services/app-service.yaml
+  - ../../manifests/services/gateway-service.yaml
+  - ../../manifests/services/webhook-service.yaml
+  
+  # No Ingress in dev (Shopify CLI handles routing)
+
+patchesStrategicMerge:
+  - development-config.yaml
+
+images:
+  - name: microservice-app/shopify-service
+    newTag: dev-latest
+  - name: microservice-app/auth-service
+    newTag: dev-latest
+  - name: microservice-app/app-service
+    newTag: dev-latest
+  - name: microservice-app/gateway-service
+    newTag: dev-latest
+  - name: microservice-app/webhook-service
+    newTag: dev-latest
+
+replicas:
+  - name: postgres
+    count: 1
+  - name: redis
+    count: 1
+  - name: shopify-service
+    count: 1
+  - name: auth-service
+    count: 1
+  - name: app-service
+    count: 1
+  - name: gateway-service
+    count: 1
+  - name: webhook-service
+    count: 1
