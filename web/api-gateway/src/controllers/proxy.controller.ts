@@ -27,7 +27,7 @@ export class ProxyController {
   @All(['/app', '/app/*path'])
   async appRoutes(@Req() req: Request, @Res() res: Response) {
     this.logger.log(`App route: ${req.path}`);
-    
+
     // Forward to app service for static serving
     return this.proxyService.forwardRequest(req, res, 'app');
   }

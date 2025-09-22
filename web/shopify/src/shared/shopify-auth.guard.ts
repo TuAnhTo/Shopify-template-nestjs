@@ -23,7 +23,7 @@ export interface ShopifyRequest extends Request {
 
 /**
  * Shopify Auth Guard for microservices
- * 
+ *
  * This guard assumes that session token validation has already been done
  * by the API Gateway. It extracts and validates the session information
  * passed through headers by the gateway.
@@ -40,7 +40,9 @@ export class ShopifyAuthGuard implements CanActivate {
       const sessionInfo = this.extractSessionInfo(request);
 
       if (!sessionInfo) {
-        throw new UnauthorizedException('Shopify session information not found');
+        throw new UnauthorizedException(
+          'Shopify session information not found',
+        );
       }
 
       // Validate session information
@@ -60,12 +62,16 @@ export class ShopifyAuthGuard implements CanActivate {
     } catch (error) {
       this.logger.error('Shopify auth guard failed:', error);
       throw new UnauthorizedException(
-        error instanceof Error ? error.message : 'Shopify authentication failed'
+        error instanceof Error
+          ? error.message
+          : 'Shopify authentication failed',
       );
     }
   }
 
-  private extractSessionInfo(request: ShopifyRequest): ShopifySessionInfo | null {
+  private extractSessionInfo(
+    request: ShopifyRequest,
+  ): ShopifySessionInfo | null {
     // Extract session information from headers set by API Gateway
     const shop = request.headers['x-shopify-shop-domain'] as string;
     const userId = request.headers['x-shopify-user-id'] as string;
@@ -103,12 +109,14 @@ export class ShopifyAuthGuard implements CanActivate {
 
   private isValidShopDomain(shop: string): boolean {
     // Validate shop domain format - should be a Shopify domain
-    const shopRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*\.(myshopify\.com|shopify\.com|shopifycloud\.com)$/;
+    const shopRegex =
+      /^[a-zA-Z0-9][a-zA-Z0-9-]*\.(myshopify\.com|shopify\.com|shopifycloud\.com)$/;
     return shopRegex.test(shop);
   }
 
   private isValidUUID(uuid: string): boolean {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[4][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[4][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);
   }
 }

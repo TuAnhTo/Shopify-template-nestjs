@@ -15,8 +15,9 @@ export class ShopifyService {
     this.logger.log(`Fetching products for shop: ${shop}`);
 
     try {
-      const products =
-        await this.shopifyRepository.getProductsFromShopify(shop);
+      const products = await this.shopifyRepository.getProductsFromShopify(
+        shop,
+      );
 
       return {
         products: products.map((product) => ({
@@ -113,8 +114,9 @@ export class ShopifyService {
     this.logger.log(`Fetching customers for shop: ${shop}`);
 
     try {
-      const customers =
-        await this.shopifyRepository.getCustomersFromShopify(shop);
+      const customers = await this.shopifyRepository.getCustomersFromShopify(
+        shop,
+      );
 
       return {
         customers: customers.map((customer) => ({
@@ -146,8 +148,9 @@ export class ShopifyService {
     this.logger.log(`Fetching shop info for: ${shop}`);
 
     try {
-      const shopInfo =
-        await this.shopifyRepository.getShopInfoFromShopify(shop);
+      const shopInfo = await this.shopifyRepository.getShopInfoFromShopify(
+        shop,
+      );
 
       return {
         shop: {

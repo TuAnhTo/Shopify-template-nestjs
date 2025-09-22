@@ -43,11 +43,16 @@ import { ShopifySessionGuard } from './guards/shopify-session.guard';
     // 🗄️ Database - Use unified DATABASE_URL
     TypeOrmModule.forRoot({
       type: 'postgres',
-      url: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/microservice_app',
+      url:
+        process.env.DATABASE_URL ||
+        'postgresql://postgres:password@localhost:5432/microservice_app',
       entities: [User, ShopifySession],
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV === 'development',
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl:
+        process.env.NODE_ENV === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
     }),
     TypeOrmModule.forFeature([User, ShopifySession]),
 

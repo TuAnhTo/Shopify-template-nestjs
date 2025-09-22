@@ -247,13 +247,10 @@ export class ShopifyAuthService {
     try {
       const requiredConfigs = ['SHOPIFY_API_KEY', 'SHOPIFY_API_SECRET'];
 
-      const configStatus = requiredConfigs.reduce(
-        (acc, key) => {
-          acc[key] = !!this.configService.get(key);
-          return acc;
-        },
-        {} as Record<string, boolean>,
-      );
+      const configStatus = requiredConfigs.reduce((acc, key) => {
+        acc[key] = !!this.configService.get(key);
+        return acc;
+      }, {} as Record<string, boolean>);
 
       const allConfigsValid = Object.values(configStatus).every(Boolean);
 

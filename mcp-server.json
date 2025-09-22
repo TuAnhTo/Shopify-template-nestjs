@@ -6,14 +6,16 @@
       "env": {
         "NODE_ENV": "production",
         "GATEWAY_API_URL": "http://localhost:3000",
-        "PRODUCT_API_URL": "http://localhost:3001", 
+        "PRODUCT_API_URL": "http://localhost:3001",
         "AUTH_API_URL": "http://localhost:3002",
         "WEBHOOK_API_URL": "http://localhost:3003"
       }
     },
     "workflow-management": {
-      "command": "node", 
-      "args": ["/Users/tuanhto/AI/claude-gemini-bridge/workflow/mcp-integration/workflow-mcp-server.js"],
+      "command": "node",
+      "args": [
+        "/Users/tuanhto/AI/claude-gemini-bridge/workflow/mcp-integration/workflow-mcp-server.js"
+      ],
       "env": {
         "WORKFLOW_API_URL": "http://localhost:4000/api",
         "NODE_ENV": "production"
@@ -32,12 +34,12 @@
             "description": "Product operation to perform"
           },
           "productData": {
-            "type": "object", 
+            "type": "object",
             "description": "Product data for operations"
           },
           "validation_rules": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": { "type": "string" },
             "description": "Validation rules to apply"
           }
         },
@@ -53,7 +55,13 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["api-gateway", "product-service", "auth-service", "webhook-service", "all"]
+              "enum": [
+                "api-gateway",
+                "product-service",
+                "auth-service",
+                "webhook-service",
+                "all"
+              ]
             },
             "description": "Services to monitor"
           },
@@ -72,11 +80,17 @@
         "properties": {
           "webhook_type": {
             "type": "string",
-            "enum": ["orders/create", "orders/updated", "products/create", "products/update", "customers/create"],
+            "enum": [
+              "orders/create",
+              "orders/updated",
+              "products/create",
+              "products/update",
+              "customers/create"
+            ],
             "description": "Type of Shopify webhook"
           },
           "auto_route": {
-            "type": "boolean", 
+            "type": "boolean",
             "default": true,
             "description": "Automatically route to appropriate service"
           },
@@ -99,8 +113,12 @@
             "description": "Type of data to synchronize"
           },
           "direction": {
-            "type": "string", 
-            "enum": ["shopify_to_service", "service_to_shopify", "bidirectional"],
+            "type": "string",
+            "enum": [
+              "shopify_to_service",
+              "service_to_shopify",
+              "bidirectional"
+            ],
             "description": "Sync direction"
           },
           "conflict_resolution": {
@@ -166,17 +184,13 @@
     },
     "system_health_monitoring": {
       "description": "Continuous monitoring and alerting for all microservices",
-      "steps": [
-        "microservice_health_check"
-      ],
+      "steps": ["microservice_health_check"],
       "schedule": "*/5 * * * *",
       "alert_on_failure": true
     },
     "daily_data_sync": {
       "description": "Daily synchronization of all data between Shopify and services",
-      "steps": [
-        "data_synchronization"
-      ],
+      "steps": ["data_synchronization"],
       "schedule": "0 2 * * *",
       "parallel": false,
       "cleanup_after": true

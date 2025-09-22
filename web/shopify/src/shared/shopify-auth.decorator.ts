@@ -3,7 +3,7 @@ import { ShopifySessionInfo, ShopifyRequest } from './shopify-auth.guard';
 
 /**
  * Decorator to extract Shopify session information from request
- * 
+ *
  * Usage:
  * @Get('example')
  * async example(@ShopifySession() session: ShopifySessionInfo) {
@@ -12,12 +12,17 @@ import { ShopifySessionInfo, ShopifyRequest } from './shopify-auth.guard';
  * }
  */
 export const ShopifySession = createParamDecorator(
-  (data: keyof ShopifySessionInfo | undefined, ctx: ExecutionContext): ShopifySessionInfo | any => {
+  (
+    data: keyof ShopifySessionInfo | undefined,
+    ctx: ExecutionContext,
+  ): ShopifySessionInfo | any => {
     const request = ctx.switchToHttp().getRequest<ShopifyRequest>();
     const session = request.shopifySession;
 
     if (!session) {
-      throw new Error('Shopify session not found. Make sure ShopifyAuthGuard is applied.');
+      throw new Error(
+        'Shopify session not found. Make sure ShopifyAuthGuard is applied.',
+      );
     }
 
     // If specific property is requested, return that property
@@ -32,7 +37,7 @@ export const ShopifySession = createParamDecorator(
 
 /**
  * Decorator to extract shop domain from Shopify session
- * 
+ *
  * Usage:
  * @Get('example')
  * async example(@ShopifyShop() shop: string) {
@@ -45,7 +50,9 @@ export const ShopifyShop = createParamDecorator(
     const shop = request.shop;
 
     if (!shop) {
-      throw new Error('Shop information not found. Make sure ShopifyAuthGuard is applied.');
+      throw new Error(
+        'Shop information not found. Make sure ShopifyAuthGuard is applied.',
+      );
     }
 
     return shop;
@@ -54,7 +61,7 @@ export const ShopifyShop = createParamDecorator(
 
 /**
  * Decorator to extract user ID from Shopify session
- * 
+ *
  * Usage:
  * @Get('example')
  * async example(@ShopifyUser() userId: string) {
@@ -67,7 +74,9 @@ export const ShopifyUser = createParamDecorator(
     const userId = request.userId;
 
     if (!userId) {
-      throw new Error('User information not found. Make sure ShopifyAuthGuard is applied.');
+      throw new Error(
+        'User information not found. Make sure ShopifyAuthGuard is applied.',
+      );
     }
 
     return userId;

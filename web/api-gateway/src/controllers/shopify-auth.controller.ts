@@ -5,7 +5,7 @@ import { ShopifyAuthService } from '../services/shopify-auth.service';
 
 /**
  * 🔐 Enhanced Shopify Auth Controller for Gateway
- * 
+ *
  * Handles Shopify embedded app authentication flow at Gateway level
  * Based on successful boostbar-smart-discount implementation
  */
@@ -29,34 +29,49 @@ export class ShopifyAuthController {
     const embedded = req.query.embedded as string;
     const host = req.query.host as string;
 
-    this.logger.log(`Root request: shop=${shop}, embedded=${embedded}, host=${host}`);
+    this.logger.log(
+      `Root request: shop=${shop}, embedded=${embedded}, host=${host}`,
+    );
 
     // Always forward to app service for static file serving
     // App service will handle SHOPIFY_API_KEY injection and static files
     // But first, check auth for Shopify requests
-    
+
     if (shop) {
       // This is a Shopify request, apply auth middleware logic
-      const isInstalled = await this.shopifyAuthService.checkShopInstallation(shop);
-      
+      const isInstalled = await this.shopifyAuthService.checkShopInstallation(
+        shop,
+      );
+
       // For embedded requests with valid session token, handle token exchange
       if (embedded === '1' && req.query.id_token) {
-        const isValidToken = await this.shopifyAuthService.validateSessionToken(req.query.id_token as string);
-        
+        const isValidToken = await this.shopifyAuthService.validateSessionToken(
+          req.query.id_token as string,
+        );
+
         if (!isValidToken) {
-          this.logger.warn(`Invalid session token for shop ${shop}, redirecting to auth`);
+          this.logger.warn(
+            `Invalid session token for shop ${shop}, redirecting to auth`,
+          );
           return this.redirectToAuth(req, res);
         }
 
         // If valid session token but no stored session, perform token exchange
         if (!isInstalled) {
-          this.logger.log(`Valid session token but no stored session for ${shop}, performing token exchange`);
-          
+          this.logger.log(
+            `Valid session token but no stored session for ${shop}, performing token exchange`,
+          );
+
           try {
-            await this.shopifyAuthService.performTokenExchange(req.query.id_token as string);
+            await this.shopifyAuthService.performTokenExchange(
+              req.query.id_token as string,
+            );
             this.logger.log(`Token exchange successful for shop ${shop}`);
           } catch (error) {
-            this.logger.error(`Token exchange failed for shop ${shop}:`, error.message);
+            this.logger.error(
+              `Token exchange failed for shop ${shop}:`,
+              error.message,
+            );
             return this.redirectToAuth(req, res);
           }
         }
@@ -69,9 +84,12 @@ export class ShopifyAuthController {
 
         // For non-embedded requests, check active session
         if (embedded !== '1') {
-          const hasActiveSession = await this.shopifyAuthService.checkActiveSession(shop);
+          const hasActiveSession =
+            await this.shopifyAuthService.checkActiveSession(shop);
           if (!hasActiveSession) {
-            this.logger.log(`No active session for shop ${shop}, redirecting to auth`);
+            this.logger.log(
+              `No active session for shop ${shop}, redirecting to auth`,
+            );
             return this.redirectToAuth(req, res);
           }
         }
@@ -90,13 +108,13 @@ export class ShopifyAuthController {
   @Get('api/auth')
   async initiateAuth(@Req() req: Request, @Res() res: Response) {
     const shop = req.query.shop as string;
-    
+
     if (!shop) {
       return res.status(400).json({ error: 'Shop parameter required' });
     }
 
     this.logger.log(`OAuth initiation for shop: ${shop}`);
-    
+
     // Forward to auth service for OAuth handling
     return this.proxyService.forwardRequest(req, res, 'auth');
   }
@@ -108,7 +126,7 @@ export class ShopifyAuthController {
   @Get('api/auth/callback')
   async handleCallback(@Req() req: Request, @Res() res: Response) {
     this.logger.log('OAuth callback received');
-    
+
     // Forward to auth service for callback processing
     return this.proxyService.forwardRequest(req, res, 'auth');
   }
@@ -130,7 +148,7 @@ export class ShopifyAuthController {
 
     // Generate auth URL
     const authUrl = this.shopifyAuthService.generateAuthUrl(shop, host);
-    
+
     // Return exit iframe page that redirects to auth
     const exitIframeHtml = this.generateExitIframeHtml(authUrl);
     return res.setHeader('Content-Type', 'text/html').send(exitIframeHtml);
@@ -143,13 +161,15 @@ export class ShopifyAuthController {
   @All(['app', 'app/*path'])
   async handleAppRoutes(@Req() req: Request, @Res() res: Response) {
     const shop = req.query.shop as string;
-    
+
     this.logger.log(`App route: ${req.path}, shop: ${shop}`);
 
     // If embedded app with shop, ensure authentication
     if (shop && req.query.embedded === '1') {
-      const isInstalled = await this.shopifyAuthService.checkShopInstallation(shop);
-      
+      const isInstalled = await this.shopifyAuthService.checkShopInstallation(
+        shop,
+      );
+
       if (!isInstalled) {
         return this.redirectToAuth(req, res);
       }
@@ -194,7 +214,7 @@ export class ShopifyAuthController {
     }).toString();
 
     const queryParams = new URLSearchParams({
-      ...req.query as Record<string, string>,
+      ...(req.query as Record<string, string>),
       shop,
       redirectUri: `${process.env.GATEWAY_HOST}/api/auth?${redirectUriParams}`,
     }).toString();
@@ -207,7 +227,7 @@ export class ShopifyAuthController {
    */
   private async serverSideRedirect(req: Request, res: Response) {
     const shop = req.query.shop as string;
-    
+
     // Generate OAuth URL and redirect
     const authUrl = this.shopifyAuthService.generateOAuthUrl(shop);
     return res.redirect(authUrl);

@@ -14,14 +14,16 @@ export function useAuthenticatedFetch() {
     async (uri: string, options: RequestInit = {}) => {
       try {
         // Get fresh session token (they expire every minute)
-        const sessionToken = await getSessionToken(app as unknown as ClientApplication<AppBridgeState>);
-        
+        const sessionToken = await getSessionToken(
+          app as unknown as ClientApplication<AppBridgeState>
+        );
+
         // Merge authentication headers with existing options
         const authenticatedOptions: RequestInit = {
           ...options,
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${sessionToken}`,
+            Authorization: `Bearer ${sessionToken}`,
             ...options.headers,
           },
         };
@@ -29,14 +31,17 @@ export function useAuthenticatedFetch() {
         return fetch(uri, authenticatedOptions);
       } catch (error) {
         console.error("Authentication error:", error);
-        
+
         // If session token fails, redirect to bounce page for re-authentication
-        if (error instanceof Error && error.message.includes("FAILED_AUTHENTICATION")) {
+        if (
+          error instanceof Error &&
+          error.message.includes("FAILED_AUTHENTICATION")
+        ) {
           window.location.href = `/exitiframe?shop=${encodeURIComponent(
             new URLSearchParams(location.search).get("shop") || ""
           )}`;
         }
-        
+
         throw error;
       }
     },

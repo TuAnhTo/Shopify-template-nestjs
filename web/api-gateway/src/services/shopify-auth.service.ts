@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 
 /**
  * 🔐 Gateway Shopify Auth Service
- * 
+ *
  * Lightweight auth service for Gateway to handle:
  * - Shop installation checks
  * - Session token validation
@@ -22,7 +22,8 @@ export class ShopifyAuthService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
   ) {
-    this.authServiceUrl = this.configService.get('AUTH_HOST') || 'http://localhost:3001';
+    this.authServiceUrl =
+      this.configService.get('AUTH_HOST') || 'http://localhost:3001';
     this.shopifyApiKey = this.configService.get('SHOPIFY_API_KEY') || '';
     this.shopifyApiSecret = this.configService.get('SHOPIFY_API_SECRET') || '';
   }
@@ -34,17 +35,20 @@ export class ShopifyAuthService {
   async checkShopInstallation(shop: string): Promise<boolean> {
     try {
       const sanitizedShop = this.sanitizeShop(shop);
-      
-      const response = await fetch(`${this.authServiceUrl}/api/auth/session?shop=${sanitizedShop}`);
-      
+
+      const response = await fetch(
+        `${this.authServiceUrl}/api/auth/session?shop=${sanitizedShop}`,
+      );
+
       if (!response.ok) {
-        this.logger.warn(`Failed to check shop installation: ${response.status}`);
+        this.logger.warn(
+          `Failed to check shop installation: ${response.status}`,
+        );
         return false;
       }
 
       const data = await response.json();
       return data.hasSession && data.isActive;
-
     } catch (error) {
       this.logger.error(`Error checking shop installation for ${shop}:`, error);
       return false;
@@ -58,16 +62,17 @@ export class ShopifyAuthService {
   async checkActiveSession(shop: string): Promise<boolean> {
     try {
       const sanitizedShop = this.sanitizeShop(shop);
-      
-      const response = await fetch(`${this.authServiceUrl}/api/auth/shopify/check-shop/${sanitizedShop}`);
-      
+
+      const response = await fetch(
+        `${this.authServiceUrl}/api/auth/shopify/check-shop/${sanitizedShop}`,
+      );
+
       if (!response.ok) {
         return false;
       }
 
       const data = await response.json();
       return data.hasValidSession;
-
     } catch (error) {
       this.logger.error(`Error checking active session for ${shop}:`, error);
       return false;
@@ -91,7 +96,13 @@ export class ShopifyAuthService {
       });
 
       // Basic validation
-      if (!payload || !payload.iss || !payload.dest || !payload.aud || !payload.sub) {
+      if (
+        !payload ||
+        !payload.iss ||
+        !payload.dest ||
+        !payload.aud ||
+        !payload.sub
+      ) {
         throw new Error('Invalid session token payload');
       }
 
@@ -106,9 +117,10 @@ export class ShopifyAuthService {
         throw new Error('Session token expired');
       }
 
-      this.logger.log(`Valid session token for shop: ${this.extractShopFromPayload(payload)}`);
+      this.logger.log(
+        `Valid session token for shop: ${this.extractShopFromPayload(payload)}`,
+      );
       return true;
-
     } catch (error) {
       this.logger.warn(`Session token validation failed: ${error.message}`);
       return false;
@@ -127,7 +139,7 @@ export class ShopifyAuthService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${sessionToken}`,
         },
         body: JSON.stringify({
           tokenType: 'offline', // Request offline token for persistent session
@@ -136,18 +148,21 @@ export class ShopifyAuthService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Token exchange failed: ${response.status} ${errorText}`);
+        throw new Error(
+          `Token exchange failed: ${response.status} ${errorText}`,
+        );
       }
 
       const result = await response.json();
-      
+
       if (!result.success) {
-        throw new Error(`Token exchange failed: ${result.error || 'Unknown error'}`);
+        throw new Error(
+          `Token exchange failed: ${result.error || 'Unknown error'}`,
+        );
       }
 
       this.logger.log('Token exchange completed successfully');
       return true;
-
     } catch (error) {
       this.logger.error(`Token exchange error: ${error.message}`);
       return false;
@@ -160,8 +175,9 @@ export class ShopifyAuthService {
    */
   generateOAuthUrl(shop: string): string {
     const sanitizedShop = this.sanitizeShop(shop);
-    const gatewayHost = this.configService.get('GATEWAY_HOST') || 'http://localhost:3003';
-    
+    const gatewayHost =
+      this.configService.get('GATEWAY_HOST') || 'http://localhost:3003';
+
     const params = new URLSearchParams({
       client_id: this.shopifyApiKey,
       scope: this.configService.get('SCOPES') || 'read_products,write_products',
@@ -178,8 +194,9 @@ export class ShopifyAuthService {
    * Creates auth URL for embedded app redirect
    */
   generateAuthUrl(shop: string, host?: string): string {
-    const gatewayHost = this.configService.get('GATEWAY_HOST') || 'http://localhost:3003';
-    
+    const gatewayHost =
+      this.configService.get('GATEWAY_HOST') || 'http://localhost:3003';
+
     const params = new URLSearchParams({
       shop: this.sanitizeShop(shop),
     });
@@ -231,10 +248,12 @@ export class ShopifyAuthService {
 
     const cleanShop = shop.trim().toLowerCase();
     const withoutProtocol = cleanShop.replace(/^https?:\/\//, '');
-    
+
     // Extract shop name
-    const shopMatch = withoutProtocol.match(/^([a-z0-9-]+)(?:\.myshopify\.com)?/);
-    
+    const shopMatch = withoutProtocol.match(
+      /^([a-z0-9-]+)(?:\.myshopify\.com)?/,
+    );
+
     if (!shopMatch) {
       return '';
     }
@@ -246,7 +265,9 @@ export class ShopifyAuthService {
    * Generate random state for OAuth
    */
   private generateState(): string {
-    return Math.random().toString(36).substring(2, 15) + 
-           Math.random().toString(36).substring(2, 15);
+    return (
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15)
+    );
   }
 }
